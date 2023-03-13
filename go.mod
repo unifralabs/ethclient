@@ -2,7 +2,10 @@ module github.com/unifra20/ethclient
 
 go 1.20
 
-require github.com/ethereum/go-ethereum v1.11.3
+require (
+	github.com/ethereum/go-ethereum v1.11.3
+	github.com/hashicorp/golang-lru/v2 v2.0.1
+)
 
 require (
 	github.com/DataDog/zstd v1.5.2 // indirect

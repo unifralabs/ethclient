@@ -23,17 +23,23 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
+	"runtime"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 // Client defines typed wrappers for the Ethereum RPC API.
 type Client struct {
-	c *rpc.Client
+	c           *rpc.Client
+	bundleCache *lru.ARCCache[string, []byte]
+	httpClient  *http.Client
+	apiEndpoint string
 }
 
 // Dial connects a client to the given URL.
@@ -46,12 +52,27 @@ func DialContext(ctx context.Context, rawurl string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewClient(c), nil
+	return NewClient(c, rawurl), nil
 }
 
 // NewClient creates a client that uses the given RPC client.
-func NewClient(c *rpc.Client) *Client {
-	return &Client{c}
+func NewClient(c *rpc.Client, rawurl string) *Client {
+	// Set max 10% of the system memory
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	systemMemory := memStats.Sys
+
+	cacheSize := int(0.1 * float64(systemMemory))
+	cache, err := lru.NewARC[string, []byte](cacheSize)
+	if err != nil {
+		panic(err)
+	}
+	return &Client{
+		c:           c,
+		bundleCache: cache,
+		httpClient:  &http.Client{},
+		apiEndpoint: rawurl,
+	}
 }
 
 func (ec *Client) Close() {
