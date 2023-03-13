@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	lru "github.com/hashicorp/golang-lru/v2"
 )
 
@@ -22,7 +24,7 @@ const (
 
 // CallContext dispatches the bundle method to the unifra bundle API or the standard method to the underlying RPC client.
 func (ec *Client) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
-	if isBundleMethod(method) {
+	if isBundleMethod(method) && isBundleArgs(args...) {
 		// Handle Bundle method
 		cacheKey := getCacheKey(method, args...)
 		if cacheValue, ok := ec.bundleCache.Get(cacheKey); ok {
@@ -35,7 +37,7 @@ func (ec *Client) CallContext(ctx context.Context, result interface{}, method st
 				return err
 			}
 
-			data, err := fetchBundleDataWithContext(ctx, ec.httpClient, url)
+			data, err := fetchBundleDataWithContext(ctx, url)
 			if err != nil {
 				return err
 			}
@@ -58,6 +60,34 @@ func (ec *Client) CallContext(ctx context.Context, result interface{}, method st
 func isBundleMethod(method string) bool {
 	switch method {
 	case "eth_getBlockByNumber", "eth_getBlockReceipts", "trace_block":
+		return true
+	default:
+		return false
+	}
+}
+
+func isBundleArgs(args ...interface{}) bool {
+	if len(args) == 0 {
+		return false
+	}
+
+	// only hex and number are supported
+	if args[0] == nil {
+		return false
+	}
+
+	switch args[0].(type) {
+	case string:
+		// hex
+		if strings.HasPrefix(args[0].(string), "0x") {
+			return true
+		}
+		// number
+		if _, err := strconv.Atoi(args[0].(string)); err == nil {
+			return true
+		}
+		return false
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return true
 	default:
 		return false
@@ -97,14 +127,14 @@ func getBundleURL(apiEndpoint string, method string, args ...interface{}) (strin
 
 	switch method {
 	case "eth_getBlockByNumber":
-		blockNumber := args[0].(string)
-		return fmt.Sprintf("%s/blocks/%s", baseUrl, blockNumber), nil
+		blockNumber := hexutil.MustDecodeUint64(args[0].(string))
+		return fmt.Sprintf("%s/blocks/%d", baseUrl, blockNumber), nil
 	case "eth_getBlockReceipts":
-		blockNumber := args[0].(string)
-		return fmt.Sprintf("%s/receipts/%s", baseUrl, blockNumber), nil
+		blockNumber := hexutil.MustDecodeUint64(args[0].(string))
+		return fmt.Sprintf("%s/receipts/%d", baseUrl, blockNumber), nil
 	case "trace_block":
-		blockNumber := args[0].(string)
-		return fmt.Sprintf("%s/traces/%s", baseUrl, blockNumber), nil
+		blockNumber := hexutil.MustDecodeUint64(args[0].(string))
+		return fmt.Sprintf("%s/traces/%d", baseUrl, blockNumber), nil
 	default:
 		return "", errors.New("getBundleURL: unsupported method")
 	}
@@ -117,30 +147,28 @@ type metadata struct {
 	Error        string `json:"error"`
 }
 
-func fetchBundleDataWithContext(ctx context.Context, httpClient *http.Client, url string) ([]byte, error) {
-	// fetch metadata
+func fetchBundleDataWithContext(ctx context.Context, url string) ([]byte, error) {
+	// Fetch metadata
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, ethereum.NotFound
+		}
 		return nil, fmt.Errorf("fetchBundleDataWithContext: status code %d", resp.StatusCode)
 	}
 
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
 	var meta metadata
-	if err := json.Unmarshal(data, &meta); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&meta); err != nil {
 		return nil, err
 	}
 
@@ -148,13 +176,8 @@ func fetchBundleDataWithContext(ctx context.Context, httpClient *http.Client, ur
 		return nil, errors.New(meta.Error)
 	}
 
-	// fetch bundle data and uncompress
-	req, err = http.NewRequestWithContext(ctx, "GET", meta.DownloadLink, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err = httpClient.Do(req)
+	// Fetch bundle data and uncompress
+	resp, err = http.Get(meta.DownloadLink)
 	if err != nil {
 		return nil, err
 	}
@@ -164,13 +187,13 @@ func fetchBundleDataWithContext(ctx context.Context, httpClient *http.Client, ur
 		return nil, fmt.Errorf("fetchBundleDataWithContext: status code %d", resp.StatusCode)
 	}
 
-	gz, err := gzip.NewReader(resp.Body)
+	r, err := gzip.NewReader(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	defer gz.Close()
+	defer r.Close()
 
-	data, err = io.ReadAll(gz)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
@@ -178,21 +201,21 @@ func fetchBundleDataWithContext(ctx context.Context, httpClient *http.Client, ur
 	return data, nil
 }
 
-func cacheData(cache *lru.ARCCache[string, []byte], bundleType string, cacheKey string, data []byte) ([]byte, error) {
+func cacheData(cache *lru.ARCCache[string, []byte], method string, cacheKey string, data []byte) ([]byte, error) {
 	var matched []byte
 
 	var blockInfosList []interface{}
-	switch bundleType {
-	case "traces", "receipts":
+	switch method {
+	case "trace_block", "eth_getBlockReceipts":
 		if err := json.Unmarshal(data, &blockInfosList); err != nil {
 			return nil, err
 		}
-	case "blocks":
+	case "eth_getBlockByNumber":
 		if err := json.Unmarshal(data, &blockInfosList); err != nil {
 			return nil, err
 		}
 	default:
-		return nil, fmt.Errorf("invalid bundle type: %s", bundleType)
+		return nil, fmt.Errorf("invalid bundle type: %s", method)
 	}
 
 	for _, blockInfos := range blockInfosList {
@@ -200,7 +223,7 @@ func cacheData(cache *lru.ARCCache[string, []byte], bundleType string, cacheKey 
 			blockNumberHex string
 			err            error
 		)
-		if bundleType == "receipts" || bundleType == "traces" {
+		if method == "eth_getBlockReceipts" || method == "trace_block" {
 			binfos := blockInfos.([]interface{})
 			if len(binfos) == 0 {
 				continue
@@ -219,13 +242,13 @@ func cacheData(cache *lru.ARCCache[string, []byte], bundleType string, cacheKey 
 				}
 				blockNumberHex = fmt.Sprintf("0x%x", blockNumber)
 			}
-		} else if bundleType == "blocks" {
+		} else if method == "eth_getBlockByNumber" {
 			blockNumberHex = blockInfos.(map[string]interface{})["number"].(string)
 		} else {
-			return nil, fmt.Errorf("invalid bundle type: %s", bundleType)
+			return nil, fmt.Errorf("invalid bundle method: %s", method)
 		}
-		k := fmt.Sprintf("%s:%s", CacheBlockPrefix, blockNumberHex)
-		cacheDataBytes, err := json.Marshal(blockInfosList)
+		k := fmt.Sprintf("%s%s", CacheBlockPrefix, blockNumberHex)
+		cacheDataBytes, err := json.Marshal(blockInfos)
 		if err != nil {
 			return nil, err
 		}

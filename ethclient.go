@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"net/http"
 	"runtime"
 
 	"github.com/ethereum/go-ethereum"
@@ -38,7 +37,6 @@ import (
 type Client struct {
 	c           *rpc.Client
 	bundleCache *lru.ARCCache[string, []byte]
-	httpClient  *http.Client
 	apiEndpoint string
 }
 
@@ -70,7 +68,6 @@ func NewClient(c *rpc.Client, rawurl string) *Client {
 	return &Client{
 		c:           c,
 		bundleCache: cache,
-		httpClient:  &http.Client{},
 		apiEndpoint: rawurl,
 	}
 }
@@ -131,7 +128,7 @@ type rpcBlock struct {
 
 func (ec *Client) getBlock(ctx context.Context, method string, args ...interface{}) (*types.Block, error) {
 	var raw json.RawMessage
-	err := ec.c.CallContext(ctx, &raw, method, args...)
+	err := ec.CallContext(ctx, &raw, method, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -195,6 +192,7 @@ func (ec *Client) getBlock(ctx context.Context, method string, args ...interface
 		}
 		txs[i] = tx.tx
 	}
+
 	return types.NewBlockWithHeader(head).WithBody(txs, uncles).WithWithdrawals(body.Withdrawals), nil
 }
 
@@ -212,7 +210,7 @@ func (ec *Client) HeaderByHash(ctx context.Context, hash common.Hash) (*types.He
 // nil, the latest known header is returned.
 func (ec *Client) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
 	var head *types.Header
-	err := ec.c.CallContext(ctx, &head, "eth_getBlockByNumber", toBlockNumArg(number), false)
+	err := ec.CallContext(ctx, &head, "eth_getBlockByNumber", toBlockNumArg(number), false)
 	if err == nil && head == nil {
 		err = ethereum.NotFound
 	}
@@ -673,4 +671,77 @@ func (p *rpcProgress) toSyncProgress() *ethereum.SyncProgress {
 		HealingTrienodes:    uint64(p.HealingTrienodes),
 		HealingBytecode:     uint64(p.HealingBytecode),
 	}
+}
+
+// ParityTrace A trace in the desired format (Parity/OpenEtherum) See: https://openethereum.github.io/wiki/JSONRPC-trace-module
+type ParityTrace struct {
+	// Do not change the ordering of these fields -- allows for easier comparison with other clients
+	Action              interface{}  `json:"action"` // Can be either CallTraceAction or CreateTraceAction
+	BlockHash           *common.Hash `json:"blockHash,omitempty"`
+	BlockNumber         *uint64      `json:"blockNumber,omitempty"`
+	Error               string       `json:"error,omitempty"`
+	Result              interface{}  `json:"result"`
+	Subtraces           int          `json:"subtraces"`
+	TraceAddress        []int        `json:"traceAddress"`
+	TransactionHash     *common.Hash `json:"transactionHash,omitempty"`
+	TransactionPosition *uint64      `json:"transactionPosition,omitempty"`
+	Type                string       `json:"type"`
+}
+
+// ParityTraces An array of parity traces
+type ParityTraces []ParityTrace
+
+func (ec *Client) BlockTraceByNumber(ctx context.Context, number *big.Int) (*ParityTraces, error) {
+	var raw json.RawMessage
+	err := ec.CallContext(ctx, &raw, "trace_block", toBlockNumArg(number))
+	if err != nil {
+		return nil, err
+	} else if len(raw) == 0 {
+		return nil, ethereum.NotFound
+	}
+
+	// Unmarshal the raw message into a ParityTraces object
+	var traces *ParityTraces
+	if err := json.Unmarshal(raw, traces); err != nil {
+		return nil, err
+	}
+
+	return traces, nil
+}
+
+func (ec *Client) TransactionTraceByHash(ctx context.Context, hash common.Hash) (*ParityTraces, error) {
+	var raw json.RawMessage
+	err := ec.c.CallContext(ctx, &raw, "trace_transaction", hash)
+	if err != nil {
+		return nil, err
+	} else if len(raw) == 0 {
+		return nil, ethereum.NotFound
+	}
+
+	// Unmarshal the raw message into a ParityTraces object
+	var traces *ParityTraces
+	if err := json.Unmarshal(raw, &traces); err != nil {
+		return nil, err
+	}
+
+	return traces, nil
+}
+
+type Receipts []types.Receipt
+
+func (ec *Client) BlockReceiptsByNumber(ctx context.Context, number *big.Int) (*Receipts, error) {
+	var raw json.RawMessage
+	err := ec.CallContext(ctx, &raw, "eth_getBlockReceipts", toBlockNumArg(number))
+	if err != nil {
+		return nil, err
+	} else if len(raw) == 0 {
+		return nil, ethereum.NotFound
+	}
+
+	var receipts *Receipts
+	if err := json.Unmarshal(raw, &receipts); err != nil {
+		return nil, err
+	}
+
+	return receipts, nil
 }
