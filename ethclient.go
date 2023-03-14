@@ -691,7 +691,7 @@ type ParityTrace struct {
 // ParityTraces An array of parity traces
 type ParityTraces []ParityTrace
 
-func (ec *Client) BlockTraceByNumber(ctx context.Context, number *big.Int) (*ParityTraces, error) {
+func (ec *Client) BlockTraceByNumber(ctx context.Context, number *big.Int) (ParityTraces, error) {
 	var raw json.RawMessage
 	err := ec.CallContext(ctx, &raw, "trace_block", toBlockNumArg(number))
 	if err != nil {
@@ -701,15 +701,15 @@ func (ec *Client) BlockTraceByNumber(ctx context.Context, number *big.Int) (*Par
 	}
 
 	// Unmarshal the raw message into a ParityTraces object
-	var traces *ParityTraces
-	if err := json.Unmarshal(raw, traces); err != nil {
+	var traces ParityTraces
+	if err := json.Unmarshal(raw, &traces); err != nil {
 		return nil, err
 	}
 
 	return traces, nil
 }
 
-func (ec *Client) TransactionTraceByHash(ctx context.Context, hash common.Hash) (*ParityTraces, error) {
+func (ec *Client) TransactionTraceByHash(ctx context.Context, hash common.Hash) (ParityTraces, error) {
 	var raw json.RawMessage
 	err := ec.c.CallContext(ctx, &raw, "trace_transaction", hash)
 	if err != nil {
@@ -719,7 +719,7 @@ func (ec *Client) TransactionTraceByHash(ctx context.Context, hash common.Hash) 
 	}
 
 	// Unmarshal the raw message into a ParityTraces object
-	var traces *ParityTraces
+	var traces ParityTraces
 	if err := json.Unmarshal(raw, &traces); err != nil {
 		return nil, err
 	}
@@ -729,7 +729,7 @@ func (ec *Client) TransactionTraceByHash(ctx context.Context, hash common.Hash) 
 
 type Receipts []types.Receipt
 
-func (ec *Client) BlockReceiptsByNumber(ctx context.Context, number *big.Int) (*Receipts, error) {
+func (ec *Client) BlockReceiptsByNumber(ctx context.Context, number *big.Int) (Receipts, error) {
 	var raw json.RawMessage
 	err := ec.CallContext(ctx, &raw, "eth_getBlockReceipts", toBlockNumArg(number))
 	if err != nil {
@@ -738,7 +738,7 @@ func (ec *Client) BlockReceiptsByNumber(ctx context.Context, number *big.Int) (*
 		return nil, ethereum.NotFound
 	}
 
-	var receipts *Receipts
+	var receipts Receipts
 	if err := json.Unmarshal(raw, &receipts); err != nil {
 		return nil, err
 	}

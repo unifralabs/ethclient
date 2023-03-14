@@ -291,6 +291,12 @@ func TestEthClient(t *testing.T) {
 		"TransactionSender": {
 			func(t *testing.T) { testTransactionSender(t, client) },
 		},
+		"BlockTraceByNumber": {
+			func(t *testing.T) { testBlockTraceByNumber(t) },
+		},
+		"BlockReceiptsByNumber": {
+			func(t *testing.T) { testBlockReceiptsByNumber(t) },
+		},
 	}
 
 	t.Parallel()
@@ -655,7 +661,7 @@ func testAtFunctions(t *testing.T, client *rpc.Client) {
 
 func testTransactionSender(t *testing.T, client *rpc.Client) {
 	ec, _ := Dial(_unifraBundleAPI)
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
 	// Retrieve testTx1 via RPC.
 	block2, err := ec.HeaderByNumber(ctx, big.NewInt(1000000))
@@ -718,4 +724,36 @@ func sendTransaction(ec *Client) error {
 		return err
 	}
 	return ec.SendTransaction(context.Background(), tx)
+}
+
+func testBlockTraceByNumber(t *testing.T) {
+	ec, _ := Dial(_unifraBundleAPI)
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
+	traces, err := ec.BlockTraceByNumber(ctx, big.NewInt(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if traces == nil {
+		t.Fatal("block trace is nil")
+	}
+	if len(traces) == 0 {
+		t.Fatal("block trace is empty")
+	}
+}
+
+func testBlockReceiptsByNumber(t *testing.T) {
+	ec, _ := Dial(_unifraBundleAPI)
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
+	receipts, err := ec.BlockReceiptsByNumber(ctx, big.NewInt(1000000))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipts == nil {
+		t.Fatal("block receipts is nil")
+	}
+	if len(receipts) == 0 {
+		t.Fatal("block receipts is empty")
+	}
 }

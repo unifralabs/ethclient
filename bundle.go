@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	CacheBlockPrefix    = "block:"
-	CacheReceiptsPrefix = "receipt:"
-	CacheTracePrefix    = "trace:"
+	CacheBlockPrefix   = "block:"
+	CacheReceiptPrefix = "receipt:"
+	CacheTracePrefix   = "trace:"
 )
 
 // CallContext dispatches the bundle method to the unifra bundle API or the standard method to the underlying RPC client.
@@ -101,7 +101,7 @@ func getCacheKey(method string, args ...interface{}) string {
 	case "eth_getBlockByNumber":
 		return CacheBlockPrefix + args[0].(string)
 	case "eth_getBlockReceipts":
-		return CacheReceiptsPrefix + args[0].(string)
+		return CacheReceiptPrefix + args[0].(string)
 	case "trace_block":
 		return CacheTracePrefix + args[0].(string)
 	default:
@@ -222,32 +222,35 @@ func cacheData(cache *lru.ARCCache[string, []byte], method string, cacheKey stri
 		var (
 			blockNumberHex string
 			err            error
+			k              string
 		)
-		if method == "eth_getBlockReceipts" || method == "trace_block" {
+		if method == "trace_block" {
 			binfos := blockInfos.([]interface{})
 			if len(binfos) == 0 {
 				continue
 			}
-			var ok bool
-			blockNumberStr, ok := binfos[0].(map[string]interface{})["number"].(string)
+			bN, ok := binfos[0].(map[string]interface{})["blockNumber"]
 			if !ok {
 				return nil, fmt.Errorf("failed to parse block number, blockInfos: %v", blockInfos)
 			}
-			if !strings.HasPrefix(blockNumberStr, "0x") {
-				// parse int64 string to hex string
-				var blockNumber int64
-				blockNumber, err = strconv.ParseInt(blockNumberStr, 10, 64)
-				if err != nil {
-					return nil, err
-				}
-				blockNumberHex = fmt.Sprintf("0x%x", blockNumber)
+			blockNumberHex = hexutil.EncodeUint64(uint64(bN.(float64)))
+			k = fmt.Sprintf("%s%s", CacheTracePrefix, blockNumberHex)
+		} else if method == "eth_getBlockReceipts" {
+			binfos := blockInfos.([]interface{})
+			if len(binfos) == 0 {
+				continue
 			}
+			blockNumberHex, ok := binfos[0].(map[string]interface{})["blockNumber"].(string)
+			if !ok {
+				return nil, fmt.Errorf("failed to parse block number, blockInfos: %v", blockInfos)
+			}
+			k = fmt.Sprintf("%s%s", CacheReceiptPrefix, blockNumberHex)
 		} else if method == "eth_getBlockByNumber" {
 			blockNumberHex = blockInfos.(map[string]interface{})["number"].(string)
+			k = fmt.Sprintf("%s%s", CacheBlockPrefix, blockNumberHex)
 		} else {
 			return nil, fmt.Errorf("invalid bundle method: %s", method)
 		}
-		k := fmt.Sprintf("%s%s", CacheBlockPrefix, blockNumberHex)
 		cacheDataBytes, err := json.Marshal(blockInfos)
 		if err != nil {
 			return nil, err
