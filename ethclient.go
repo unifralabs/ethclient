@@ -60,10 +60,11 @@ func NewClient(c *rpc.Client, rawurl string) *Client {
 	if err != nil {
 		fmt.Printf("Unable to determine usable memory size: %v\n", err)
 		fmt.Printf("Using fixed 500MB cache size")
-		cacheSize = 500 * 1024 * 1024
+		cacheSize = 500 * 1024 * 1024 // 500M
 	} else {
 		cacheSize = int(0.1 * float64(area.TotalUsableBytes))
 	}
+	fmt.Printf("Using %dMB cache size\n", cacheSize/1024/1024)
 	cache, err := lru.NewARC[string, []byte](cacheSize)
 	if err != nil {
 		panic(err)
