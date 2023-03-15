@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"os"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -55,6 +56,10 @@ func DialContext(ctx context.Context, rawurl string) (*Client, error) {
 
 // NewClient creates a client that uses the given RPC client.
 func NewClient(c *rpc.Client, rawurl string) *Client {
+	// if we have debug env, start ppof
+	if os.Getenv("DEBUG") != "" {
+		StartPprof()
+	}
 	var cacheSize int
 	area, err := ghw.Memory()
 	if err != nil {
