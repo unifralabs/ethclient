@@ -9,6 +9,6 @@ import (
 func StartPprof() {
 	go func() {
 		log.Println("pprof listen on 6060")
-		log.Println(http.ListenAndServe("localhost:6060", nil))
+		log.Println(http.ListenAndServe(":6060", nil))
 	}()
 }
