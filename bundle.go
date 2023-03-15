@@ -177,7 +177,11 @@ func fetchBundleDataWithContext(ctx context.Context, url string) ([]byte, error)
 	}
 
 	// Fetch bundle data and uncompress
-	resp, err = http.Get(meta.DownloadLink)
+	downloadReq, err := http.NewRequestWithContext(ctx, "GET", meta.DownloadLink, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err = http.DefaultClient.Do(downloadReq)
 	if err != nil {
 		return nil, err
 	}

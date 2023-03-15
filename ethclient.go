@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"runtime"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -31,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/jaypipes/ghw"
 )
 
 // Client defines typed wrappers for the Ethereum RPC API.
@@ -55,12 +55,15 @@ func DialContext(ctx context.Context, rawurl string) (*Client, error) {
 
 // NewClient creates a client that uses the given RPC client.
 func NewClient(c *rpc.Client, rawurl string) *Client {
-	// Set max 10% of the system memory
-	var memStats runtime.MemStats
-	runtime.ReadMemStats(&memStats)
-	systemMemory := memStats.Sys
-
-	cacheSize := int(0.1 * float64(systemMemory))
+	var cacheSize int
+	area, err := ghw.Memory()
+	if err != nil {
+		fmt.Printf("Unable to determine usable memory size: %v\n", err)
+		fmt.Printf("Using fixed 500MB cache size")
+		cacheSize = 500 * 1024 * 1024
+	} else {
+		cacheSize = int(0.1 * float64(area.TotalUsableBytes))
+	}
 	cache, err := lru.NewARC[string, []byte](cacheSize)
 	if err != nil {
 		panic(err)
