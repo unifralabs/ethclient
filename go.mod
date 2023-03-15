@@ -3,15 +3,14 @@ module github.com/unifra20/ethclient
 go 1.20
 
 require (
+	github.com/VictoriaMetrics/fastcache v1.6.0
 	github.com/ethereum/go-ethereum v1.11.3
-	github.com/hashicorp/golang-lru/v2 v2.0.1
 	github.com/jaypipes/ghw v0.10.0
 )
 
 require (
 	github.com/DataDog/zstd v1.5.2 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
-	github.com/VictoriaMetrics/fastcache v1.6.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect

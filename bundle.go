@@ -1,6 +1,7 @@
 package ethclient
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
@@ -11,9 +12,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/VictoriaMetrics/fastcache"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 const (
@@ -27,7 +28,8 @@ func (ec *Client) CallContext(ctx context.Context, result interface{}, method st
 	if isBundleMethod(method) && isBundleArgs(args...) {
 		// Handle Bundle method
 		cacheKey := getCacheKey(method, args...)
-		if cacheValue, ok := ec.bundleCache.Get(cacheKey); ok {
+		cacheValue := ec.bundleCache.GetBig(nil, []byte(cacheKey))
+		if cacheValue != nil {
 			// Return value from cache
 			return decodeResult(cacheValue, result)
 		} else {
@@ -49,7 +51,7 @@ func (ec *Client) CallContext(ctx context.Context, result interface{}, method st
 			}
 
 			// Return matched value
-			return decodeResult(matched, result)
+			return decodeResult(*matched, result)
 		}
 	} else {
 		// Handle standard method using underlying RPC client
@@ -205,8 +207,8 @@ func fetchBundleDataWithContext(ctx context.Context, url string) ([]byte, error)
 	return data, nil
 }
 
-func cacheData(cache *lru.ARCCache[string, []byte], method string, cacheKey string, data []byte) ([]byte, error) {
-	var matched []byte
+func cacheData(cache *fastcache.Cache, method string, cacheKey string, data []byte) (*[]byte, error) {
+	var matched *[]byte
 
 	var blockInfosList []interface{}
 	switch method {
@@ -222,10 +224,10 @@ func cacheData(cache *lru.ARCCache[string, []byte], method string, cacheKey stri
 		return nil, fmt.Errorf("invalid bundle type: %s", method)
 	}
 
+	var buf bytes.Buffer
 	for _, blockInfos := range blockInfosList {
 		var (
 			blockNumberHex string
-			err            error
 			k              string
 		)
 		if method == "trace_block" {
@@ -248,20 +250,23 @@ func cacheData(cache *lru.ARCCache[string, []byte], method string, cacheKey stri
 			if !ok {
 				return nil, fmt.Errorf("failed to parse block number, blockInfos: %v", blockInfos)
 			}
-			k = fmt.Sprintf("%s%s", CacheReceiptPrefix, blockNumberHex)
+			k = CacheReceiptPrefix + blockNumberHex
 		} else if method == "eth_getBlockByNumber" {
 			blockNumberHex = blockInfos.(map[string]interface{})["number"].(string)
-			k = fmt.Sprintf("%s%s", CacheBlockPrefix, blockNumberHex)
+			k = CacheBlockPrefix + blockNumberHex
 		} else {
 			return nil, fmt.Errorf("invalid bundle method: %s", method)
 		}
-		cacheDataBytes, err := json.Marshal(blockInfos)
-		if err != nil {
+		buf.Reset()
+		if err := json.NewEncoder(&buf).Encode(blockInfos); err != nil {
 			return nil, err
 		}
-		cache.Add(k, cacheDataBytes)
+		cacheDataBytes := buf.Bytes()
+		cache.SetBig([]byte(k), cacheDataBytes)
 		if k == cacheKey {
-			matched = cacheDataBytes
+			matched = new([]byte)
+			*matched = make([]byte, len(cacheDataBytes))
+			copy(*matched, cacheDataBytes)
 		}
 	}
 

@@ -12,7 +12,7 @@ import (
 func main() {
 	_unifraBundleAPI := "https://eth-mainnet.unifra.io/v1/f7530c7a69314a6da8c430d96f10de64"
 	ec, _ := ethclient.Dial(_unifraBundleAPI)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 1000*time.Second)
 
 	// BlockByNumber
 	bn := big.NewInt(10000000)
@@ -27,7 +27,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("HeaderByNumber Hash: %s\n", header.Hash().Hex())
+	fmt.Printf("HeaderByNumber Hash: %s - number: %d\n", header.Hash().Hex(), header.Number.Int64())
 
 	// BlockReceipts
 	receipts, err := ec.BlockReceiptsByNumber(ctx, bn)

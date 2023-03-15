@@ -25,19 +25,19 @@ import (
 	"math/big"
 	"os"
 
+	"github.com/VictoriaMetrics/fastcache"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
-	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/jaypipes/ghw"
 )
 
 // Client defines typed wrappers for the Ethereum RPC API.
 type Client struct {
 	c           *rpc.Client
-	bundleCache *lru.ARCCache[string, []byte]
+	bundleCache *fastcache.Cache
 	apiEndpoint string
 }
 
@@ -70,10 +70,7 @@ func NewClient(c *rpc.Client, rawurl string) *Client {
 		cacheSize = int(0.1 * float64(area.TotalUsableBytes))
 	}
 	fmt.Printf("Using %dMB cache size\n", cacheSize/1024/1024)
-	cache, err := lru.NewARC[string, []byte](cacheSize)
-	if err != nil {
-		panic(err)
-	}
+	cache := fastcache.New(cacheSize)
 	return &Client{
 		c:           c,
 		bundleCache: cache,
