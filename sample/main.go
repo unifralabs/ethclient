@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	_unifraBundleAPI := "https://eth-mainnet.unifra.io/v1/f7530c7a69314a6da8c430d96f10de64"
+	_unifraBundleAPI := "https://eth-mainnet.unifra.io/v1/{your-api-key}"
 	ec, _ := ethclient.Dial(_unifraBundleAPI)
 	ctx, _ := context.WithTimeout(context.Background(), 1000*time.Second)
 
