@@ -39,7 +39,13 @@ func (ec *Client) CallContext(ctx context.Context, result interface{}, method st
 				return err
 			}
 
-			data, err := fetchBundleDataWithContext(ctx, url)
+			paths := strings.Split(ec.apiEndpoint, "/")
+			if len(paths) < 2 {
+				return errors.New("invalid apiEndpoint")
+			}
+
+			apikey := paths[len(paths)-2]
+			data, err := fetchBundleDataWithContext(ctx, url, apikey)
 			if err != nil {
 				return err
 			}
@@ -149,7 +155,7 @@ type metadata struct {
 	Error        string `json:"error"`
 }
 
-func fetchBundleDataWithContext(ctx context.Context, url string) ([]byte, error) {
+func fetchBundleDataWithContext(ctx context.Context, url, apikey string) ([]byte, error) {
 	// Fetch metadata
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -183,6 +189,7 @@ func fetchBundleDataWithContext(ctx context.Context, url string) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
+	downloadReq.Header.Add("Authorization", apikey)
 	resp, err = http.DefaultClient.Do(downloadReq)
 	if err != nil {
 		return nil, err

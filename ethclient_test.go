@@ -757,3 +757,20 @@ func testBlockReceiptsByNumber(t *testing.T) {
 		t.Fatal("block receipts is empty")
 	}
 }
+
+func TestAuthrization(t *testing.T) {
+
+	ec, _ := Dial(_unifraBundleAPI)
+	ctx := context.Background()
+
+	receipts, err := ec.BlockReceiptsByNumber(ctx, big.NewInt(1000000))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipts == nil {
+		t.Fatal("block receipts is nil")
+	}
+	if len(receipts) == 0 {
+		t.Fatal("block receipts is empty")
+	}
+}
