@@ -47,7 +47,7 @@ func (ec *Client) CallContext(ctx context.Context, result interface{}, method st
 			apikey := ""
 			paths := strings.Split(ec.apiEndpoint, "/")
 			if len(paths) >= 2 {
-				apikey = paths[len(paths)-2]
+				apikey = paths[len(paths)-1]
 			}
 
 			data, err := fetchBundleDataWithContext(ctx, url, apikey)
