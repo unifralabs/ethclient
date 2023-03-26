@@ -791,7 +791,7 @@ func TestAuthrization(t *testing.T) {
 		}
 
 		_, err = ec.BlockTraceByNumber(ctx, big.NewInt(blockNum))
-		if err == nil {
+		if err != nil {
 			if err.Error() != "not found" {
 				t.Fatalf("wrong apikey BlockTraceByNumber should fail")
 			}

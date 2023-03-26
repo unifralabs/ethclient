@@ -190,7 +190,10 @@ func fetchBundleDataWithContext(ctx context.Context, url, apikey string) ([]byte
 	}
 
 	// Fetch bundle data and uncompress
-	downloadReq, err := http.NewRequestWithContext(ctx, "GET", meta.DownloadLink, nil)
+
+	//TODO delete this line if cachebundle.unifra.io online
+	downloadReq, err := http.NewRequestWithContext(ctx, "GET", strings.ReplaceAll(meta.DownloadLink, "cachebundle.unifra.io", "bundle.admin5497.workers.dev"), nil)
+	//	downloadReq, err := http.NewRequestWithContext(ctx, "GET", meta.DownloadLink, nil)
 	if err != nil {
 		return nil, err
 	}
