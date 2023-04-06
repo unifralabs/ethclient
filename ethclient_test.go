@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"reflect"
 	"testing"
@@ -755,5 +756,121 @@ func testBlockReceiptsByNumber(t *testing.T) {
 	}
 	if len(receipts) == 0 {
 		t.Fatal("block receipts is empty")
+	}
+}
+
+func TestAuthrization(t *testing.T) {
+	fu := func(blockNum int64) {
+
+		ec, _ := Dial("https://staging-eth-mainnet.unifra.io/v1/c045aaea2e944216bc34a6516f62bff4")
+
+		// this is a staging eth-mainnet app key
+		ctx := context.Background()
+		defer ec.Close()
+		block, err := ec.BlockByNumber(ctx, big.NewInt(blockNum))
+		if err != nil {
+			t.Fatalf("correct apikey BlockByNumber(%d) should success.%v", blockNum, err)
+		}
+		if block == nil || block.Number().Int64() != blockNum {
+			log.Fatalf("block nil or blockNum not correct")
+		}
+		_, err = ec.HeaderByNumber(ctx, big.NewInt(blockNum))
+		if err != nil {
+			t.Fatalf("wrong apikey HeaderByNumber should fail")
+		}
+
+		receipts, err := ec.BlockReceiptsByNumber(ctx, big.NewInt(blockNum))
+		if err != nil {
+			if err.Error() != "not found" {
+				t.Fatalf("correct apikey BlockReceiptsByNumber should success:%v", err)
+			}
+		} else {
+			if receipts == nil {
+				t.Fatal("block receipts is nil")
+			}
+		}
+
+		_, err = ec.BlockTraceByNumber(ctx, big.NewInt(blockNum))
+		if err == nil {
+			if err.Error() != "not found" {
+				t.Fatalf("wrong apikey BlockTraceByNumber should fail")
+			}
+		}
+
+		//wrong apikey
+		ec2, _ := Dial("https://eth-mainnet.unifra.io/v1/25b2aec5c8a049b98ccb2a2468bc0b8f")
+		receipts, err = ec2.BlockReceiptsByNumber(ctx, big.NewInt(blockNum))
+		if err == nil {
+			t.Fatalf("wrong apikey should fail")
+		}
+
+		_, err = ec2.BlockByNumber(ctx, big.NewInt(blockNum))
+		if err == nil {
+			t.Fatalf("wrong apikey BlockByNumber should fail")
+		}
+
+		_, err = ec2.BlockTraceByNumber(ctx, big.NewInt(blockNum))
+		if err == nil {
+			t.Fatalf("wrong apikey BlockTraceByNumber should fail")
+		}
+
+		_, err = ec2.HeaderByNumber(ctx, big.NewInt(blockNum))
+		if err == nil {
+			t.Fatalf("wrong apikey HeaderByNumber should fail")
+		}
+
+		ec3, _ := Dial("https://eth-mainnet.unifra.io/v1/")
+		receipts, err = ec3.BlockReceiptsByNumber(ctx, big.NewInt(blockNum))
+		if err == nil {
+			t.Fatalf("empty apikey BlockReceiptsByNumber should fail")
+		}
+
+		_, err = ec3.BlockByNumber(ctx, big.NewInt(blockNum))
+		if err == nil {
+			t.Fatalf("empty apikey BlockByNumber should fail")
+		}
+
+		_, err = ec3.BlockTraceByNumber(ctx, big.NewInt(blockNum))
+		if err == nil {
+			t.Fatalf("empty apikey BlockTraceByNumber should fail")
+		}
+
+		_, err = ec3.HeaderByNumber(ctx, big.NewInt(blockNum))
+		if err == nil {
+			t.Fatalf("empty apikey HeaderByNumber should fail")
+		}
+
+	}
+	fu(1)
+	fu(10)
+	fu(100)
+	fu(1000)
+	fu(10000)
+	fu(100000)
+	fu(100_0000)
+	fu(1000_0000)
+
+	//test latest
+	ec, _ := Dial("https://staging-eth-mainnet.unifra.io/v1/c045aaea2e944216bc34a6516f62bff4")
+	defer ec.Close()
+
+	ctx := context.Background()
+	latest, err := ec.BlockNumber(context.Background())
+	if err != nil {
+		t.Fatalf("get latest number fail")
+	}
+	_, err = ec.BlockByNumber(context.Background(), big.NewInt(int64(latest)))
+	if err == nil {
+		t.Fatalf("free account should not able to download file.")
+	}
+
+	_, err = ec.BlockTraceByNumber(ctx, big.NewInt(int64(latest)))
+	if err == nil {
+		t.Fatalf("empty apikey BlockTraceByNumber should fail")
+	}
+
+	_, err = ec.HeaderByNumber(ctx, big.NewInt(int64(latest)))
+	if err == nil {
+		t.Fatalf("empty apikey HeaderByNumber should fail")
 	}
 }

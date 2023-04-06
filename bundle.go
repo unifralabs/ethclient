@@ -39,7 +39,18 @@ func (ec *Client) CallContext(ctx context.Context, result interface{}, method st
 				return err
 			}
 
-			data, err := fetchBundleDataWithContext(ctx, url)
+			/*
+				May be, in the feature, there is a design that some account did not need
+				authorization. So we should not return error here,just put a empty authrization key
+				and let backend service to decide error or not.
+			*/
+			apikey := ""
+			paths := strings.Split(ec.apiEndpoint, "/")
+			if len(paths) >= 2 {
+				apikey = paths[len(paths)-1]
+			}
+
+			data, err := fetchBundleDataWithContext(ctx, url, apikey)
 			if err != nil {
 				return err
 			}
@@ -149,7 +160,7 @@ type metadata struct {
 	Error        string `json:"error"`
 }
 
-func fetchBundleDataWithContext(ctx context.Context, url string) ([]byte, error) {
+func fetchBundleDataWithContext(ctx context.Context, url, apikey string) ([]byte, error) {
 	// Fetch metadata
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -183,6 +194,7 @@ func fetchBundleDataWithContext(ctx context.Context, url string) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
+	downloadReq.Header.Add("Authorization", fmt.Sprintf("Bearer %s", apikey))
 	resp, err = http.DefaultClient.Do(downloadReq)
 	if err != nil {
 		return nil, err
