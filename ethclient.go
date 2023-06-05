@@ -63,8 +63,8 @@ func NewClient(c *rpc.Client, rawurl string) *Client {
 	var cacheSize int
 	area, err := ghw.Memory()
 	if err != nil {
-		fmt.Printf("Unable to determine usable memory size: %v\n", err)
-		fmt.Printf("Using fixed 500MB cache size")
+		fmt.Printf("[WARN] Unable to determine usable memory size: %v\n", err)
+		fmt.Printf("[WARN] Using fixed 500MB cache size")
 		cacheSize = 500 * 1024 * 1024 // 500M
 	} else {
 		cacheSize = int(0.1 * float64(area.TotalUsableBytes))
