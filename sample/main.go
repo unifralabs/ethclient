@@ -15,7 +15,7 @@ func main() {
 	ctx, _ := context.WithTimeout(context.Background(), 1000*time.Second)
 
 	// BlockByNumber
-	bn := big.NewInt(10000000)
+	bn := big.NewInt(1000000)
 	block, err := ec.BlockByNumber(ctx, bn)
 	if err != nil {
 		panic(err)

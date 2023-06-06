@@ -2,7 +2,7 @@ module sample
 
 go 1.20
 
-require github.com/unifra20/ethclient v0.0.3-0.20230406014452-8b570b495b18
+require github.com/unifra20/ethclient v0.0.3-0.20230606012252-e80c86ca934b
 
 require (
 	github.com/StackExchange/wmi v1.2.1 // indirect

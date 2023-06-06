@@ -126,6 +126,8 @@ github.com/unifra20/ethclient v0.0.2 h1:qAy35KzytWYDkkWIaLc+aM90CENVZrFjkIUnn/ow
 github.com/unifra20/ethclient v0.0.2/go.mod h1:XYXojS56A5yoZ9GdRLGRZ6X/aLLgylT11V7v092rQmk=
 github.com/unifra20/ethclient v0.0.3-0.20230406014452-8b570b495b18 h1:9szdlafXIkE/1CEw8PesbyMNOHvSX0F+eX2eYsnYngQ=
 github.com/unifra20/ethclient v0.0.3-0.20230406014452-8b570b495b18/go.mod h1:XYXojS56A5yoZ9GdRLGRZ6X/aLLgylT11V7v092rQmk=
+github.com/unifra20/ethclient v0.0.3-0.20230606012252-e80c86ca934b h1:NZkGgdu+zfp3uiyGXLcJS+F9b5p1WiM+ZRfCfY/pc6U=
+github.com/unifra20/ethclient v0.0.3-0.20230606012252-e80c86ca934b/go.mod h1:XYXojS56A5yoZ9GdRLGRZ6X/aLLgylT11V7v092rQmk=
 github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa h1:5SqCsI/2Qya2bCzK15ozrqo2sZxkh0FHynJZOTVoV6Q=
 github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 h1:bAn7/zixMGCfxrRTfdpNzjtPYqr8smhKouy9mxVdGPU=
 github.com/yusufpapurcu/wmi v1.2.3 h1:E1ctvB7uKFMOJw3fdOW32DwGE9I7t++CRUEMKvFoFiw=
