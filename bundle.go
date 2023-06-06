@@ -33,7 +33,7 @@ func (ec *Client) CallContext(ctx context.Context, result interface{}, method st
 			// Return value from cache
 			return decodeResult(cacheValue, result)
 		} else {
-			// Fetch data from Bundle APIf
+			// Fetch data from Bundle API
 			url, err := getBundleURL(ec.apiEndpoint, method, args...)
 			if err != nil {
 				return err
@@ -154,10 +154,10 @@ func getBundleURL(apiEndpoint string, method string, args ...interface{}) (strin
 }
 
 type metadata struct {
-	Type         string `json:"type"`
-	Range        string `json:"range"`
-	DownloadLink string `json:"download_link"`
-	Error        string `json:"error"`
+	Type         string `json:"type,omitempty"`
+	Range        string `json:"range,omitempty"`
+	DownloadLink string `json:"download_link,omitempty"`
+	Error        string `json:"error,omitempty"`
 }
 
 func fetchBundleDataWithContext(ctx context.Context, url, apikey string) ([]byte, error) {
@@ -177,7 +177,6 @@ func fetchBundleDataWithContext(ctx context.Context, url, apikey string) ([]byte
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, ethereum.NotFound
 		}
-		return nil, fmt.Errorf("fetchBundleDataWithContext: status code %d", resp.StatusCode)
 	}
 
 	var meta metadata
@@ -202,7 +201,16 @@ func fetchBundleDataWithContext(ctx context.Context, url, apikey string) ([]byte
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("fetchBundleDataWithContext: status code %d", resp.StatusCode)
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, ethereum.NotFound
+		}
+
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, errors.New(string(data))
 	}
 
 	r, err := gzip.NewReader(resp.Body)

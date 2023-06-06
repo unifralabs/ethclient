@@ -54,7 +54,7 @@ var (
 	// _ = ethereum.PendingStateEventer(&Client{})
 	_ = ethereum.PendingContractCaller(&Client{})
 
-	_unifraBundleAPI = "https://eth-mainnet.unifra.io/v1/f7530c7a69314a6da8c430d96f10de64"
+	_unifraBundleAPI = "https://eth-mainnet.unifra.io/v1/38376e1ad73b4b0c8bf6edc7896ce272"
 )
 
 func TestToFilterArg(t *testing.T) {
@@ -762,9 +762,9 @@ func testBlockReceiptsByNumber(t *testing.T) {
 func TestAuthrization(t *testing.T) {
 	fu := func(blockNum int64) {
 
-		ec, _ := Dial("https://staging-eth-mainnet.unifra.io/v1/c045aaea2e944216bc34a6516f62bff4")
+		ec, _ := Dial("https://eth-mainnet.unifra.io/v1/38376e1ad73b4b0c8bf6edc7896ce272")
 
-		// this is a staging eth-mainnet app key
+		// this is a eth-mainnet app key
 		ctx := context.Background()
 		defer ec.Close()
 		block, err := ec.BlockByNumber(ctx, big.NewInt(blockNum))
@@ -791,15 +791,15 @@ func TestAuthrization(t *testing.T) {
 		}
 
 		_, err = ec.BlockTraceByNumber(ctx, big.NewInt(blockNum))
-		if err == nil {
+		if err != nil {
 			if err.Error() != "not found" {
 				t.Fatalf("wrong apikey BlockTraceByNumber should fail")
 			}
 		}
 
 		//wrong apikey
-		ec2, _ := Dial("https://eth-mainnet.unifra.io/v1/25b2aec5c8a049b98ccb2a2468bc0b8f")
-		receipts, err = ec2.BlockReceiptsByNumber(ctx, big.NewInt(blockNum))
+		ec2, _ := Dial("https://eth-mainnet.unifra.io/v1/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+		_, err = ec2.BlockReceiptsByNumber(ctx, big.NewInt(blockNum))
 		if err == nil {
 			t.Fatalf("wrong apikey should fail")
 		}
@@ -820,7 +820,7 @@ func TestAuthrization(t *testing.T) {
 		}
 
 		ec3, _ := Dial("https://eth-mainnet.unifra.io/v1/")
-		receipts, err = ec3.BlockReceiptsByNumber(ctx, big.NewInt(blockNum))
+		_, err = ec3.BlockReceiptsByNumber(ctx, big.NewInt(blockNum))
 		if err == nil {
 			t.Fatalf("empty apikey BlockReceiptsByNumber should fail")
 		}
@@ -851,7 +851,7 @@ func TestAuthrization(t *testing.T) {
 	fu(1000_0000)
 
 	//test latest
-	ec, _ := Dial("https://staging-eth-mainnet.unifra.io/v1/c045aaea2e944216bc34a6516f62bff4")
+	ec, _ := Dial("https://eth-mainnet.unifra.io/v1/38376e1ad73b4b0c8bf6edc7896ce272")
 	defer ec.Close()
 
 	ctx := context.Background()
